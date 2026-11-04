@@ -32,28 +32,15 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.HistoryEdu
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MilitaryTech
-import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PsychologyAlt
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.WorkspacePremium
-import androidx.compose.material3.LinearProgressIndicator
-import com.example.chess.data.portraitRes
-import com.example.chess.data.dividerRes
-import com.example.chess.gamification.UserProgressState
-import com.example.ui.theme.AmberStar
-import com.example.ui.theme.EmeraldWin
-import com.example.ui.theme.GoldDark
-import com.example.ui.theme.GoldLight
-import com.example.ui.theme.GoldPrimary
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import com.example.chess.model.BoardTheme
-import com.example.chess.model.PieceStyle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -64,7 +51,11 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -76,12 +67,18 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -90,6 +87,16 @@ import com.example.chess.data.BookDatabase
 import com.example.chess.data.BookGame
 import com.example.chess.data.GameChallengeItem
 import com.example.chess.data.GameChapter
+import com.example.chess.data.portraitRes
+import com.example.chess.gamification.UserProgressState
+import com.example.chess.model.BoardTheme
+import com.example.chess.model.PieceStyle
+import com.example.ui.theme.AmberStar
+import com.example.ui.theme.CharcoalDark
+import com.example.ui.theme.CharcoalSurface
+import com.example.ui.theme.EmeraldWin
+import com.example.ui.theme.GoldLight
+import com.example.ui.theme.GoldPrimary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -98,7 +105,11 @@ fun GameListScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val totalGamesCount = BookDatabase.getAllGames().size
+    val allGamesCanonical = remember { BookDatabase.getAllGames() }
+    val gameIndexMap = remember(allGamesCanonical) {
+        allGamesCanonical.mapIndexed { idx, g -> g.id to idx }.toMap()
+    }
+    val totalGamesCount = allGamesCanonical.size
     val totalChallengesCount = BookDatabase.getAllChallenges().size
     val solvedCount = uiState.solvedChallengeIds.size
 
@@ -110,33 +121,74 @@ fun GameListScreen(
                         Surface(
                             shape = RoundedCornerShape(10.dp),
                             color = MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier.size(38.dp)
+                            modifier = Modifier.size(36.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = Icons.Default.EmojiEvents,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(22.dp)
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
                         }
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
                         Column {
                             Text(
-                                text = "Grandes Maestros del Ajedrez",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.ExtraBold
+                                text = "Grandmaster Journey",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.ExtraBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                             Text(
-                                text = "Historia, Análisis Magistral y Momentos Críticos",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                text = "Mis Geniales Predecesores",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
                 },
                 actions = {
+                    // Botón de Registro / Usuario Activo
+                    Surface(
+                        shape = RoundedCornerShape(18.dp),
+                        color = GoldPrimary.copy(alpha = 0.16f),
+                        border = BorderStroke(1.dp, GoldPrimary),
+                        modifier = Modifier
+                            .padding(end = 4.dp)
+                            .clickable { viewModel.openRegistrationDialog(0) }
+                            .testTag("top_bar_register_button")
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Registro de usuario",
+                                tint = GoldLight,
+                                modifier = Modifier.size(15.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (uiState.userProgress.isRegistered) {
+                                    uiState.userProgress.displayUsername
+                                } else {
+                                    "Registro"
+                                },
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = GoldLight
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
                     IconButton(
                         onClick = { viewModel.toggleBoardThemeDialog(true) },
                         modifier = Modifier.testTag("game_list_board_button")
@@ -164,136 +216,219 @@ fun GameListScreen(
                 modifier = Modifier.testTag("game_list_top_app_bar")
             )
         },
+        bottomBar = {
+            NavigationBar(
+                containerColor = Color(0xFF1A100B),
+                tonalElevation = 8.dp
+            ) {
+                val navColors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = Color(0xFF1B1008),
+                    selectedTextColor = GoldLight,
+                    indicatorColor = GoldPrimary,
+                    unselectedIconColor = Color(0xFFB8A898),
+                    unselectedTextColor = Color(0xFFB8A898)
+                )
+
+                NavigationBarItem(
+                    selected = uiState.selectedHomeTab == HomeTab.JOURNEY_MAP,
+                    onClick = { viewModel.onHomeTabSelected(HomeTab.JOURNEY_MAP) },
+                    icon = { Icon(Icons.Default.Map, contentDescription = "Viaje") },
+                    label = { Text("Viaje", fontWeight = FontWeight.Bold, fontSize = 11.sp) },
+                    colors = navColors,
+                    modifier = Modifier.testTag("tab_journey_map")
+                )
+                NavigationBarItem(
+                    selected = uiState.selectedHomeTab == HomeTab.EXPLORE_GAMES,
+                    onClick = { viewModel.onHomeTabSelected(HomeTab.EXPLORE_GAMES) },
+                    icon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = "Partidas") },
+                    label = { Text("Partidas", fontWeight = FontWeight.Bold, fontSize = 11.sp) },
+                    colors = navColors,
+                    modifier = Modifier.testTag("tab_explore_games")
+                )
+                NavigationBarItem(
+                    selected = uiState.selectedHomeTab == HomeTab.CRITICAL_CHALLENGES,
+                    onClick = { viewModel.onHomeTabSelected(HomeTab.CRITICAL_CHALLENGES) },
+                    icon = { Icon(Icons.Default.PsychologyAlt, contentDescription = "Retos") },
+                    label = { Text("Retos", fontWeight = FontWeight.Bold, fontSize = 11.sp) },
+                    colors = navColors,
+                    modifier = Modifier.testTag("tab_critical_challenges")
+                )
+                NavigationBarItem(
+                    selected = uiState.selectedHomeTab == HomeTab.MUSEUM_PROGRESS,
+                    onClick = { viewModel.onHomeTabSelected(HomeTab.MUSEUM_PROGRESS) },
+                    icon = { Icon(Icons.Default.MilitaryTech, contentDescription = "Museo") },
+                    label = { Text("Museo", fontWeight = FontWeight.Bold, fontSize = 11.sp) },
+                    colors = navColors,
+                    modifier = Modifier.testTag("tab_museum_progress")
+                )
+            }
+        },
         modifier = modifier.fillMaxSize()
     ) { innerPadding ->
-        if (uiState.selectedHomeTab == HomeTab.MUSEUM_PROGRESS) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-            ) {
-                HeroMenuBanner(
-                    totalGames = totalGamesCount,
-                    totalChallenges = totalChallengesCount,
-                    solvedChallenges = solvedCount,
-                    selectedTab = uiState.selectedHomeTab,
+        when (uiState.selectedHomeTab) {
+            HomeTab.JOURNEY_MAP -> {
+                JourneyMapScreen(
                     userProgress = uiState.userProgress,
-                    onTabSelected = { viewModel.onHomeTabSelected(it) },
-                    onRandomChallengeClick = { viewModel.startRandomChallenge() },
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    onOpenGameStudy = { game -> viewModel.openGame(game) },
+                    onStartGameChallenge = { game ->
+                        game.criticalMoments.firstOrNull()?.let { moment ->
+                            viewModel.startChallenge(game, moment)
+                        } ?: viewModel.openGame(game)
+                    },
+                    onOpenRegistrationDialog = { tab -> viewModel.openRegistrationDialog(tab) },
+                    onMoveCharacterToHome = { atHome -> viewModel.setCharacterAtHome(atHome) },
+                    modifier = Modifier.padding(innerPadding)
                 )
+            }
+
+            HomeTab.MUSEUM_PROGRESS -> {
                 MuseumProgressScreen(
                     userProgress = uiState.userProgress,
-                    modifier = Modifier.weight(1f)
+                    onOpenRegistrationDialog = { tab -> viewModel.openRegistrationDialog(tab) },
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
                 )
             }
-        } else {
-            LazyColumn(
-                contentPadding = PaddingValues(
-                    start = 16.dp,
-                    end = 16.dp,
-                    top = innerPadding.calculateTopPadding() + 4.dp,
-                    bottom = innerPadding.calculateBottomPadding() + 24.dp
-                ),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .testTag("games_list")
-            ) {
-                // Hero Dashboard & Mode Switcher
-                item {
-                    HeroMenuBanner(
-                        totalGames = totalGamesCount,
-                        totalChallenges = totalChallengesCount,
-                        solvedChallenges = solvedCount,
-                        selectedTab = uiState.selectedHomeTab,
-                        userProgress = uiState.userProgress,
-                        onTabSelected = { viewModel.onHomeTabSelected(it) },
-                        onRandomChallengeClick = { viewModel.startRandomChallenge() }
-                    )
-                }
 
-                // Search Bar
-                item {
-                    OutlinedTextField(
-                        value = uiState.searchQuery,
-                        onValueChange = { viewModel.onSearchQueryChange(it) },
-                        placeholder = {
-                            Text(
-                                if (uiState.selectedHomeTab == HomeTab.EXPLORE_GAMES) {
-                                    "Buscar por campeón, rival, año, apertura o tema..."
-                                } else {
-                                    "Buscar momento crítico por jugador, año o táctica..."
-                                }
-                            )
-                        },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = "Buscar"
-                            )
-                        },
-                        trailingIcon = {
-                            if (uiState.searchQuery.isNotEmpty()) {
-                                IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
-                                    Icon(Icons.Default.Clear, contentDescription = "Limpiar")
-                                }
-                            }
-                        },
-                        singleLine = true,
-                        shape = RoundedCornerShape(14.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("search_field")
-                    )
-                }
-
-                // Era / Chapter Selector Cards
-                item {
-                    EraSelectorRow(
-                        selectedChapter = uiState.selectedChapter,
-                        onChapterSelected = { viewModel.onChapterSelected(it) }
-                    )
-                }
-
-                // Dos botones dedicados: uno para cambiar el tablero y otro para cambiar las piezas
-                item {
-                    AppearanceDualButtonsBar(
-                        theme = uiState.selectedBoardTheme,
-                        style = uiState.selectedPieceStyle,
-                        onChangeBoard = { viewModel.toggleBoardThemeDialog(true) },
-                        onChangePieces = { viewModel.togglePieceStyleDialog(true) }
-                    )
-                }
-
-                // Content List: either Games or Critical Challenges
-                if (uiState.selectedHomeTab == HomeTab.EXPLORE_GAMES) {
-                    items(uiState.games, key = { it.id }) { game ->
-                        GameCard(
-                            game = game,
+            HomeTab.EXPLORE_GAMES, HomeTab.CRITICAL_CHALLENGES -> {
+                LazyColumn(
+                    contentPadding = PaddingValues(
+                        start = 16.dp,
+                        end = 16.dp,
+                        top = innerPadding.calculateTopPadding() + 6.dp,
+                        bottom = innerPadding.calculateBottomPadding() + 24.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .testTag("games_list")
+                ) {
+                    item {
+                        HeroMenuBanner(
+                            totalGames = totalGamesCount,
+                            totalChallenges = totalChallengesCount,
+                            solvedChallenges = solvedCount,
                             userProgress = uiState.userProgress,
-                            onOpenGame = { viewModel.openGame(game) },
-                            onStartChallenge = {
-                                game.criticalMoments.firstOrNull()?.let { moment ->
-                                    viewModel.startChallenge(game, moment)
-                                } ?: viewModel.openGame(game)
-                            }
+                            onRandomChallengeClick = { viewModel.startRandomChallenge() },
+                            onOpenScoresClick = { viewModel.openRegistrationDialog(1) }
                         )
                     }
-                } else {
-                    items(uiState.challenges, key = { it.moment.id }) { item ->
-                        ChallengeCard(
-                            item = item,
-                            userProgress = uiState.userProgress,
-                            onStartChallenge = { viewModel.startChallenge(item.game, item.moment) }
+
+                    item {
+                        OutlinedTextField(
+                            value = uiState.searchQuery,
+                            onValueChange = { viewModel.onSearchQueryChange(it) },
+                            placeholder = {
+                                Text(
+                                    if (uiState.selectedHomeTab == HomeTab.EXPLORE_GAMES) {
+                                        "Buscar por campeón, rival, año, apertura o tema..."
+                                    } else {
+                                        "Buscar momento crítico por jugador, año o táctica..."
+                                    }
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = "Buscar"
+                                )
+                            },
+                            trailingIcon = {
+                                if (uiState.searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
+                                        Icon(Icons.Default.Clear, contentDescription = "Limpiar")
+                                    }
+                                }
+                            },
+                            singleLine = true,
+                            shape = RoundedCornerShape(14.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("search_field")
                         )
+                    }
+
+                    item {
+                        EraSelectorRow(
+                            selectedChapter = uiState.selectedChapter,
+                            onChapterSelected = { viewModel.onChapterSelected(it) }
+                        )
+                    }
+
+                    item {
+                        AppearanceDualButtonsBar(
+                            theme = uiState.selectedBoardTheme,
+                            style = uiState.selectedPieceStyle,
+                            onChangeBoard = { viewModel.toggleBoardThemeDialog(true) },
+                            onChangePieces = { viewModel.togglePieceStyleDialog(true) }
+                        )
+                    }
+
+                    if (uiState.selectedHomeTab == HomeTab.EXPLORE_GAMES) {
+                        items(uiState.games, key = { it.id }) { game ->
+                            val idx = gameIndexMap[game.id] ?: 0
+                            val isUnlocked = idx <= uiState.userProgress.unlockedUpToIndex
+                            GameCard(
+                                game = game,
+                                journeyNumber = idx + 1,
+                                isUnlocked = isUnlocked,
+                                userProgress = uiState.userProgress,
+                                onOpenGame = {
+                                    if (isUnlocked) viewModel.openGame(game)
+                                    else viewModel.onHomeTabSelected(HomeTab.JOURNEY_MAP)
+                                },
+                                onStartChallenge = {
+                                    if (isUnlocked) {
+                                        game.criticalMoments.firstOrNull()?.let { moment ->
+                                            viewModel.startChallenge(game, moment)
+                                        } ?: viewModel.openGame(game)
+                                    } else {
+                                        viewModel.onHomeTabSelected(HomeTab.JOURNEY_MAP)
+                                    }
+                                }
+                            )
+                        }
+                    } else {
+                        items(uiState.challenges, key = { it.moment.id }) { item ->
+                            val idx = gameIndexMap[item.game.id] ?: 0
+                            val isUnlocked = idx <= uiState.userProgress.unlockedUpToIndex
+                            ChallengeCard(
+                                item = item,
+                                journeyNumber = idx + 1,
+                                isUnlocked = isUnlocked,
+                                userProgress = uiState.userProgress,
+                                onStartChallenge = {
+                                    if (isUnlocked) {
+                                        viewModel.startChallenge(item.game, item.moment)
+                                    } else {
+                                        viewModel.onHomeTabSelected(HomeTab.JOURNEY_MAP)
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }
+        }
+
+        if (uiState.showRegistrationDialog) {
+            UserRegistrationDialog(
+                userProgress = uiState.userProgress,
+                initialTab = uiState.registrationDialogInitialTab,
+                onRegisterUser = { username, email, pin, avatar, migrate ->
+                    viewModel.registerUser(username, email, pin, avatar, migrate)
+                },
+                onLoginUser = { userId, pin -> viewModel.loginUser(userId, pin) },
+                onLogout = { viewModel.logoutUser() },
+                onSelectAvatar = { avatar -> viewModel.selectPlayerAvatar(avatar) },
+                onOpenGameById = { gameId -> viewModel.openGameById(gameId) },
+                onDismiss = { viewModel.dismissRegistrationDialog() }
+            )
         }
 
         if (uiState.showBoardThemeDialog) {
@@ -340,7 +475,6 @@ private fun AppearanceDualButtonsBar(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        // Botón 1: Cambiar Tablero
         Surface(
             shape = RoundedCornerShape(12.dp),
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
@@ -399,7 +533,6 @@ private fun AppearanceDualButtonsBar(
             }
         }
 
-        // Botón 2: Cambiar Piezas
         Surface(
             shape = RoundedCornerShape(12.dp),
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
@@ -457,10 +590,9 @@ private fun HeroMenuBanner(
     totalGames: Int,
     totalChallenges: Int,
     solvedChallenges: Int,
-    selectedTab: HomeTab,
     userProgress: UserProgressState,
-    onTabSelected: (HomeTab) -> Unit,
     onRandomChallengeClick: () -> Unit,
+    onOpenScoresClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -484,34 +616,32 @@ private fun HeroMenuBanner(
                 )
                 .padding(16.dp)
         ) {
-            // Rank and XP Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
-                        shape = CircleShape,
-                        color = GoldPrimary.copy(alpha = 0.2f),
-                        border = BorderStroke(1.dp, GoldPrimary),
-                        modifier = Modifier.size(34.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(text = userProgress.rank.iconName, fontSize = 16.sp)
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Image(
+                        painter = painterResource(id = userProgress.currentAvatar.drawableRes),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .border(1.5.dp, GoldPrimary, CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
                     Column {
                         Text(
-                            text = userProgress.rank.title,
+                            text = userProgress.displayUsername,
                             style = MaterialTheme.typography.labelLarge.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = GoldLight
                             )
                         )
                         Text(
-                            text = "Rango de Maestría • Nivel ${userProgress.rank.level}",
+                            text = "${userProgress.rank.title} • Desbloqueadas: ${userProgress.unlockedUpToIndex + 1}/$totalGames",
                             style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFFC7CBD5))
                         )
                     }
@@ -520,10 +650,11 @@ private fun HeroMenuBanner(
                 Surface(
                     shape = RoundedCornerShape(8.dp),
                     color = GoldPrimary.copy(alpha = 0.15f),
-                    border = BorderStroke(0.5.dp, GoldPrimary)
+                    border = BorderStroke(0.5.dp, GoldPrimary),
+                    modifier = Modifier.clickable { onOpenScoresClick() }
                 ) {
                     Text(
-                        text = "${userProgress.totalXp} XP",
+                        text = "${userProgress.totalXp} pts",
                         style = MaterialTheme.typography.labelMedium.copy(
                             fontWeight = FontWeight.ExtraBold,
                             color = GoldLight
@@ -535,7 +666,6 @@ private fun HeroMenuBanner(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Top stats row + Quick Challenge button
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -543,8 +673,8 @@ private fun HeroMenuBanner(
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     StatBadge(
-                        value = "${userProgress.completedGamesCount}/$totalGames",
-                        label = "Partidas Dominadas"
+                        value = "${userProgress.unlockedUpToIndex + 1}/$totalGames",
+                        label = "Desbloqueadas"
                     )
                     StatBadge(
                         value = "$solvedChallenges/$totalChallenges",
@@ -568,54 +698,11 @@ private fun HeroMenuBanner(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Reto al Azar",
+                        text = "Reto Desbloqueado",
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp
                     )
                 }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Mode Selection Segmented Buttons (3 tabs)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Color(0xFF140C08))
-                    .padding(4.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                ModeTabButton(
-                    selected = selectedTab == HomeTab.EXPLORE_GAMES,
-                    title = "Partidas",
-                    subtitle = "Análisis",
-                    icon = Icons.AutoMirrored.Filled.MenuBook,
-                    onClick = { onTabSelected(HomeTab.EXPLORE_GAMES) },
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("tab_explore_games")
-                )
-                ModeTabButton(
-                    selected = selectedTab == HomeTab.CRITICAL_CHALLENGES,
-                    title = "Retos",
-                    subtitle = "Táctica",
-                    icon = Icons.Default.PsychologyAlt,
-                    onClick = { onTabSelected(HomeTab.CRITICAL_CHALLENGES) },
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("tab_critical_challenges")
-                )
-                ModeTabButton(
-                    selected = selectedTab == HomeTab.MUSEUM_PROGRESS,
-                    title = "Museo",
-                    subtitle = "Progreso",
-                    icon = Icons.Default.MilitaryTech,
-                    onClick = { onTabSelected(HomeTab.MUSEUM_PROGRESS) },
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("tab_museum_progress")
-                )
             }
         }
     }
@@ -635,53 +722,6 @@ private fun StatBadge(value: String, label: String) {
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-    }
-}
-
-@Composable
-private fun ModeTabButton(
-    selected: Boolean,
-    title: String,
-    subtitle: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(10.dp),
-        color = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
-        modifier = modifier
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp)
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Column {
-                Text(
-                    text = title,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = subtitle,
-                    fontSize = 10.sp,
-                    color = if (selected) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
     }
 }
 
@@ -711,7 +751,7 @@ private fun EraSelectorRow(
                 modifier = Modifier.testTag("chapter_chip_all")
             )
         }
-        items(GameChapter.values()) { chapter ->
+        items(GameChapter.entries) { chapter ->
             val isSelected = selectedChapter == chapter
             ElevatedFilterChip(
                 selected = isSelected,
@@ -744,6 +784,8 @@ private fun EraSelectorRow(
 @Composable
 fun GameCard(
     game: BookGame,
+    journeyNumber: Int,
+    isUnlocked: Boolean,
     userProgress: UserProgressState,
     onOpenGame: () -> Unit,
     onStartChallenge: () -> Unit,
@@ -753,35 +795,61 @@ fun GameCard(
     val totalInGame = game.criticalMoments.size
     val isCompleted = game.id in userProgress.completedGameIds
     val maxPly = userProgress.gameMaxPly[game.id] ?: 0
+    val individualRecord = userProgress.individualGameScores[game.id]
 
     Card(
         onClick = onOpenGame,
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
+            containerColor = if (isUnlocked) {
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
+            } else {
+                Color(0xFF1A120E)
+            }
         ),
-        border = if (isCompleted) BorderStroke(1.dp, GoldPrimary.copy(alpha = 0.6f)) else null,
+        border = when {
+            isCompleted -> BorderStroke(1.dp, EmeraldWin.copy(alpha = 0.6f))
+            isUnlocked -> BorderStroke(1.dp, GoldPrimary.copy(alpha = 0.35f))
+            else -> BorderStroke(1.dp, Color(0xFF3E2D21))
+        },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = modifier
             .fillMaxWidth()
+            .alpha(if (isUnlocked) 1f else 0.72f)
             .testTag("game_card_${game.id}")
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Header Row: GM Portrait + Event/Year + Result
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Image(
-                    painter = painterResource(id = game.portraitRes),
-                    contentDescription = game.whitePlayer,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(46.dp)
-                        .clip(CircleShape)
-                        .border(1.5.dp, GoldPrimary, CircleShape)
-                        .background(Color.Black)
-                )
+                Box(contentAlignment = Alignment.Center) {
+                    Image(
+                        painter = painterResource(id = game.portraitRes),
+                        contentDescription = game.whitePlayer,
+                        contentScale = ContentScale.Crop,
+                        colorFilter = if (isUnlocked) null else ColorFilter.colorMatrix(
+                            ColorMatrix().apply { setToSaturation(0.1f) }
+                        ),
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(CircleShape)
+                            .border(
+                                1.5.dp,
+                                if (isUnlocked) GoldPrimary else Color.Gray,
+                                CircleShape
+                            )
+                            .background(Color.Black)
+                    )
+                    if (!isUnlocked) {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = "Bloqueada",
+                            tint = GoldLight,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
 
                 Spacer(modifier = Modifier.width(12.dp))
 
@@ -796,7 +864,7 @@ fun GameCard(
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Text(
-                                text = "${game.event} • ${game.year}",
+                                text = "Parada #$journeyNumber • ${game.year}",
                                 color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 11.sp,
@@ -806,32 +874,40 @@ fun GameCard(
                             )
                         }
 
-                        Surface(
-                            color = when (game.result) {
-                                "1-0" -> Color(0xFF2E7D32).copy(alpha = 0.2f)
-                                "0-1" -> Color(0xFFC62828).copy(alpha = 0.2f)
-                                else -> Color(0xFF1565C0).copy(alpha = 0.2f)
-                            },
-                            shape = RoundedCornerShape(6.dp)
-                        ) {
-                            Text(
-                                text = game.result,
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 12.sp,
-                                color = when (game.result) {
-                                    "1-0" -> Color(0xFF4CAF50)
-                                    "0-1" -> Color(0xFFEF5350)
-                                    else -> Color(0xFF42A5F5)
-                                },
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                            )
+                        if (individualRecord != null && individualRecord.totalScore > 0) {
+                            Surface(
+                                color = GoldPrimary.copy(alpha = 0.18f),
+                                shape = RoundedCornerShape(6.dp),
+                                border = BorderStroke(0.5.dp, GoldPrimary)
+                            ) {
+                                Text(
+                                    text = "${individualRecord.totalScore} pts",
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 11.sp,
+                                    color = GoldLight,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                )
+                            }
+                        } else if (!isUnlocked) {
+                            Surface(
+                                color = Color(0xFF3E2D21),
+                                shape = RoundedCornerShape(6.dp)
+                            ) {
+                                Text(
+                                    text = "🔒 Bloqueada",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    color = Color(0xFFCBBBA8),
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                )
+                            }
                         }
                     }
 
                     Spacer(modifier = Modifier.height(4.dp))
 
                     Text(
-                        text = "${game.eco} ${game.openingName}",
+                        text = "${game.event} • ${game.eco} ${game.openingName}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -842,7 +918,6 @@ fun GameCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Evocative Title
             Text(
                 text = game.title,
                 style = MaterialTheme.typography.titleMedium,
@@ -852,7 +927,6 @@ fun GameCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Players Row
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -906,7 +980,6 @@ fun GameCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Strategic theme
             Text(
                 text = game.strategicTheme,
                 style = MaterialTheme.typography.bodySmall,
@@ -915,9 +988,14 @@ fun GameCard(
                 overflow = TextOverflow.Ellipsis
             )
 
-            // Gamification completion / progress status
             Spacer(modifier = Modifier.height(8.dp))
-            if (isCompleted) {
+
+            if (!isUnlocked) {
+                Text(
+                    text = "Supera primero la Partida #${journeyNumber - 1} en el Mapa de Viaje para desbloquearla.",
+                    style = MaterialTheme.typography.labelSmall.copy(color = GoldLight)
+                )
+            } else if (isCompleted) {
                 Surface(
                     shape = RoundedCornerShape(6.dp),
                     color = EmeraldWin.copy(alpha = 0.15f),
@@ -935,7 +1013,7 @@ fun GameCard(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Partida Dominada (+50 XP)",
+                            text = "Partida Superada • Puntuación guardada: ${individualRecord?.totalScore ?: 100} pts",
                             color = EmeraldWin,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
@@ -970,51 +1048,51 @@ fun GameCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Action Buttons: Study Game vs Critical Challenge
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                FilledTonalButton(
-                    onClick = onOpenGame,
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.weight(1f)
+            if (isUnlocked) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Ver Partida", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                }
-
-                if (totalInGame > 0) {
-                    OutlinedButton(
-                        onClick = onStartChallenge,
+                    FilledTonalButton(
+                        onClick = onOpenGame,
                         shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
-                        modifier = Modifier
-                            .weight(1.15f)
-                            .testTag("challenge_btn_${game.id}")
+                        modifier = Modifier.weight(1f)
                     ) {
                         Icon(
-                            imageVector = if (solvedInGame == totalInGame) Icons.Default.CheckCircle else Icons.Default.Bolt,
+                            imageVector = Icons.Default.PlayArrow,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = if (solvedInGame > 0) "Momento Crítico ($solvedInGame/$totalInGame)" else "Momento Crítico",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        Text("Estudiar", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    if (totalInGame > 0) {
+                        OutlinedButton(
+                            onClick = onStartChallenge,
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                            modifier = Modifier
+                                .weight(1.15f)
+                                .testTag("challenge_btn_${game.id}")
+                        ) {
+                            Icon(
+                                imageVector = if (solvedInGame == totalInGame) Icons.Default.CheckCircle else Icons.Default.Bolt,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (solvedInGame > 0) "Reto ($solvedInGame/$totalInGame)" else "Momento Crítico",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
             }
@@ -1025,6 +1103,8 @@ fun GameCard(
 @Composable
 fun ChallengeCard(
     item: GameChallengeItem,
+    journeyNumber: Int,
+    isUnlocked: Boolean,
     userProgress: UserProgressState,
     onStartChallenge: () -> Unit,
     modifier: Modifier = Modifier
@@ -1040,11 +1120,16 @@ fun ChallengeCard(
         onClick = onStartChallenge,
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+            containerColor = if (isUnlocked) {
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+            } else {
+                Color(0xFF1A120E)
+            }
         ),
         border = if (isSolved) BorderStroke(1.dp, GoldPrimary.copy(alpha = 0.6f)) else null,
         modifier = modifier
             .fillMaxWidth()
+            .alpha(if (isUnlocked) 1f else 0.68f)
             .testTag("challenge_card_${moment.id}")
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -1070,7 +1155,7 @@ fun ChallengeCard(
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                     ) {
                         Text(
-                            text = if (isWhiteToMove) "Blancas (J. $moveNum)" else "Negras (J. $moveNum...)",
+                            text = if (isWhiteToMove) "Parada #$journeyNumber • Blancas (J.$moveNum)" else "Parada #$journeyNumber • Negras (J.$moveNum...)",
                             color = if (isWhiteToMove) Color.Black else Color.White,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
@@ -1079,7 +1164,20 @@ fun ChallengeCard(
                     }
                 }
 
-                if (isSolved) {
+                if (!isUnlocked) {
+                    Surface(
+                        color = Color(0xFF3E2D21),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = "🔒 Bloqueado",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFCBBBA8),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
+                } else if (isSolved) {
                     Surface(
                         color = GoldPrimary.copy(alpha = 0.15f),
                         shape = RoundedCornerShape(8.dp),
@@ -1097,13 +1195,6 @@ fun ChallengeCard(
                                     modifier = Modifier.size(14.dp)
                                 )
                             }
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Resuelto",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = GoldLight
-                            )
                         }
                     }
                 } else {
@@ -1113,7 +1204,7 @@ fun ChallengeCard(
                         border = BorderStroke(0.5.dp, GoldPrimary)
                     ) {
                         Text(
-                            text = "+100 XP",
+                            text = "+300 pts",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = GoldLight,
@@ -1155,18 +1246,26 @@ fun ChallengeCard(
                 onClick = onStartChallenge,
                 shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isSolved) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.primary
+                    containerColor = when {
+                        !isUnlocked -> Color(0xFF3E2D21)
+                        isSolved -> MaterialTheme.colorScheme.surfaceVariant
+                        else -> MaterialTheme.colorScheme.primary
+                    }
                 ),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
-                    imageVector = Icons.Default.Extension,
+                    imageVector = if (isUnlocked) Icons.Default.Extension else Icons.Default.Lock,
                     contentDescription = null,
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = if (isSolved) "Repetir Reto Crítico (${stars}★)" else "Buscar la Mejor Continuación",
+                    text = when {
+                        !isUnlocked -> "Desbloquea en el Viaje (Partida #$journeyNumber)"
+                        isSolved -> "Mejorar Puntuación (${stars}★)"
+                        else -> "Buscar la Mejor Continuación"
+                    },
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp
                 )

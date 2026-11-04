@@ -9,7 +9,9 @@ import com.example.chess.data.GameChallengeItem
 import com.example.chess.data.GameChapter
 import com.example.chess.engine.EngineEvaluation
 import com.example.chess.engine.StockfishEngine
+import com.example.chess.gamification.AuthResult
 import com.example.chess.gamification.GamificationRepository
+import com.example.chess.gamification.PlayerAvatar
 import com.example.chess.gamification.SoundEffectsManager
 import com.example.chess.gamification.UserProgressState
 import com.example.chess.model.BoardState
@@ -28,6 +30,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 enum class HomeTab {
+    JOURNEY_MAP,
     EXPLORE_GAMES,
     CRITICAL_CHALLENGES,
     MUSEUM_PROGRESS
@@ -42,7 +45,7 @@ enum class ChallengeStatus {
 
 data class ChessUiState(
     val currentScreen: Screen = Screen.GAME_LIST,
-    val selectedHomeTab: HomeTab = HomeTab.EXPLORE_GAMES,
+    val selectedHomeTab: HomeTab = HomeTab.JOURNEY_MAP,
     val selectedChapter: GameChapter? = null,
     val searchQuery: String = "",
     val games: List<BookGame> = emptyList(),
@@ -69,6 +72,8 @@ data class ChessUiState(
     val wrongAttemptsCount: Int = 0,
     val lastEarnedXp: Int? = null,
     val showGameCompletedDialog: Boolean = false,
+    val showRegistrationDialog: Boolean = false,
+    val registrationDialogInitialTab: Int = 0,
     val isMuted: Boolean = false,
     val userProgress: UserProgressState = UserProgressState(),
     // Appearance settings
@@ -140,7 +145,18 @@ class ChessViewModel : ViewModel() {
         loadGames()
     }
 
+    fun isGameUnlocked(gameId: String): Boolean {
+        return GamificationRepository.isGameUnlocked(gameId)
+    }
+
+    fun openGameById(gameId: String) {
+        val game = BookDatabase.getGameById(gameId) ?: return
+        if (!isGameUnlocked(game.id)) return
+        openGame(game)
+    }
+
     fun openGame(game: BookGame) {
+        if (!isGameUnlocked(game.id)) return
         setActiveGame(game)
         _uiState.value = _uiState.value.copy(
             currentScreen = Screen.GAME_VIEWER,
@@ -150,6 +166,7 @@ class ChessViewModel : ViewModel() {
     }
 
     fun startChallenge(game: BookGame, moment: CriticalMoment) {
+        if (!isGameUnlocked(game.id)) return
         stopAutoPlay()
         engineJob?.cancel()
 
@@ -194,24 +211,42 @@ class ChessViewModel : ViewModel() {
     }
 
     fun startRandomChallenge() {
-        val all = BookDatabase.getAllChallenges()
-        if (all.isEmpty()) return
-        val unsolved = all.filter { it.moment.id !in _uiState.value.solvedChallengeIds }
-        val chosen = if (unsolved.isNotEmpty()) unsolved.random() else all.random()
+        val unlockedChallenges = BookDatabase.getAllChallenges().filter { isGameUnlocked(it.game.id) }
+        if (unlockedChallenges.isEmpty()) return
+        val unsolved = unlockedChallenges.filter { it.moment.id !in _uiState.value.solvedChallengeIds }
+        val chosen = if (unsolved.isNotEmpty()) unsolved.random() else unlockedChallenges.random()
         startChallenge(chosen.game, chosen.moment)
     }
 
     fun startNextChallenge() {
-        val all = BookDatabase.getAllChallenges()
-        if (all.isEmpty()) return
+        val unlockedChallenges = BookDatabase.getAllChallenges().filter { isGameUnlocked(it.game.id) }
+        if (unlockedChallenges.isEmpty()) return
         val currentId = _uiState.value.activeChallenge?.id
-        val currentIndex = all.indexOfFirst { it.moment.id == currentId }
-        val nextItem = if (currentIndex in 0 until all.size - 1) {
-            all[currentIndex + 1]
+        val currentIndex = unlockedChallenges.indexOfFirst { it.moment.id == currentId }
+        val nextItem = if (currentIndex in 0 until unlockedChallenges.size - 1) {
+            unlockedChallenges[currentIndex + 1]
         } else {
-            all.first()
+            unlockedChallenges.first()
         }
         startChallenge(nextItem.game, nextItem.moment)
+    }
+
+    fun openNextUnlockedGameFromDialog() {
+        val allGames = BookDatabase.getAllGames()
+        val currentGame = _uiState.value.activeGame
+        val currentIdx = if (currentGame != null) allGames.indexOfFirst { it.id == currentGame.id } else -1
+        val targetIdx = if (currentIdx >= 0 && currentIdx + 1 <= _uiState.value.userProgress.unlockedUpToIndex) {
+            currentIdx + 1
+        } else {
+            _uiState.value.userProgress.unlockedUpToIndex
+        }
+        _uiState.value = _uiState.value.copy(showGameCompletedDialog = false)
+        val nextGame = allGames.getOrNull(targetIdx)
+        if (nextGame != null && isGameUnlocked(nextGame.id)) {
+            openGame(nextGame)
+        } else {
+            navigateTo(Screen.GAME_LIST)
+        }
     }
 
     fun retryChallenge() {
@@ -229,7 +264,7 @@ class ChessViewModel : ViewModel() {
         val moment = _uiState.value.activeChallenge ?: return
         val solutionPly = (moment.plyBefore + 1).coerceAtMost(game.moves.size)
         jumpToPlyInternal(solutionPly, preserveChallengeMode = true)
-        GamificationRepository.recordChallengeResult(
+        val earned = GamificationRepository.recordChallengeResult(
             momentId = moment.id,
             gameTitle = "${game.whitePlayer} vs ${game.blackPlayer} (${game.year})",
             wrongAttempts = _uiState.value.wrongAttemptsCount,
@@ -239,7 +274,7 @@ class ChessViewModel : ViewModel() {
         _uiState.value = _uiState.value.copy(
             challengeStatus = ChallengeStatus.REVEALED,
             showChallengeHint = true,
-            lastEarnedXp = 10
+            lastEarnedXp = earned
         )
     }
 
@@ -527,6 +562,49 @@ class ChessViewModel : ViewModel() {
 
     fun dismissGameCompletedDialog() {
         _uiState.value = _uiState.value.copy(showGameCompletedDialog = false)
+    }
+
+    fun openRegistrationDialog(initialTab: Int = 0) {
+        _uiState.value = _uiState.value.copy(
+            showRegistrationDialog = true,
+            registrationDialogInitialTab = initialTab.coerceIn(0, 2)
+        )
+    }
+
+    fun dismissRegistrationDialog() {
+        _uiState.value = _uiState.value.copy(showRegistrationDialog = false)
+    }
+
+    fun registerUser(
+        username: String,
+        emailOrTag: String,
+        pin: String,
+        avatar: PlayerAvatar,
+        migrateGuest: Boolean
+    ): AuthResult {
+        return GamificationRepository.registerUser(
+            username = username,
+            emailOrTag = emailOrTag,
+            pin = pin,
+            avatar = avatar,
+            migrateGuestProgress = migrateGuest
+        )
+    }
+
+    fun loginUser(userId: String, pin: String): AuthResult {
+        return GamificationRepository.loginUser(userId = userId, pin = pin)
+    }
+
+    fun logoutUser() {
+        GamificationRepository.logoutToGuest()
+    }
+
+    fun selectPlayerAvatar(avatar: PlayerAvatar) {
+        GamificationRepository.setPlayerAvatar(avatar)
+    }
+
+    fun setCharacterAtHome(atHome: Boolean) {
+        GamificationRepository.setCharacterAtHome(atHome)
     }
 
     fun toggleMute() {

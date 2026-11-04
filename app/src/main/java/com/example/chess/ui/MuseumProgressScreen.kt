@@ -76,6 +76,7 @@ import com.example.ui.theme.GoldPrimary
 @Composable
 fun MuseumProgressScreen(
     userProgress: UserProgressState,
+    onOpenRegistrationDialog: (Int) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var selectedArtifactForDetail by remember { mutableStateOf<HistoricalArtifact?>(null) }
@@ -94,7 +95,11 @@ fun MuseumProgressScreen(
         // 1. TARJETA DE PERFIL Y RANGO DE GRAN MAESTRO
         // =====================================================================
         item {
-            GrandmasterRankCard(userProgress = userProgress)
+            GrandmasterRankCard(
+                userProgress = userProgress,
+                onOpenProfile = { onOpenRegistrationDialog(0) },
+                onOpenIndividualScores = { onOpenRegistrationDialog(1) }
+            )
         }
 
         // =====================================================================
@@ -277,7 +282,11 @@ fun MuseumProgressScreen(
 }
 
 @Composable
-private fun GrandmasterRankCard(userProgress: UserProgressState) {
+private fun GrandmasterRankCard(
+    userProgress: UserProgressState,
+    onOpenProfile: () -> Unit,
+    onOpenIndividualScores: () -> Unit
+) {
     val rank = userProgress.rank
     val currentXp = userProgress.totalXp
     val xpInLevel = (currentXp - rank.minXp).coerceAtLeast(0)
@@ -310,19 +319,18 @@ private fun GrandmasterRankCard(userProgress: UserProgressState) {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(
-                            shape = CircleShape,
-                            color = GoldPrimary.copy(alpha = 0.2f),
-                            border = BorderStroke(1.5.dp, GoldPrimary),
-                            modifier = Modifier.size(54.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = rank.iconName,
-                                    fontSize = 26.sp
-                                )
-                            }
-                        }
+                        Image(
+                            painter = painterResource(id = userProgress.currentAvatar.drawableRes),
+                            contentDescription = userProgress.displayUsername,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(CircleShape)
+                                .background(GoldPrimary.copy(alpha = 0.2f))
+                                .padding(2.dp)
+                                .clip(CircleShape)
+                                .clickable { onOpenProfile() }
+                        )
 
                         Spacer(modifier = Modifier.width(14.dp))
 
@@ -332,11 +340,11 @@ private fun GrandmasterRankCard(userProgress: UserProgressState) {
                                 color = GoldPrimary.copy(alpha = 0.15f)
                             ) {
                                 Text(
-                                    text = "NIVEL ${rank.level}",
+                                    text = "${userProgress.displayUsername.uppercase()} • NIVEL ${rank.level}",
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         color = GoldLight,
                                         fontWeight = FontWeight.Bold,
-                                        letterSpacing = 1.sp
+                                        letterSpacing = 0.8.sp
                                     ),
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                 )
@@ -359,17 +367,17 @@ private fun GrandmasterRankCard(userProgress: UserProgressState) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Barra de Experiencia
+                // Barra de Puntuación Acumulada
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "Experiencia Histórica",
+                        text = "Puntuación Total del Usuario",
                         style = MaterialTheme.typography.labelMedium.copy(color = Color(0xFFD4C8B8))
                     )
                     Text(
-                        text = "$currentXp XP ${if (rank.level < 8) "/ ${rank.maxXp + 1} XP" else ""}",
+                        text = "$currentXp pts ${if (rank.level < 8) "/ ${rank.maxXp + 1} pts" else ""}",
                         style = MaterialTheme.typography.labelMedium.copy(
                             color = GoldLight,
                             fontWeight = FontWeight.Bold
@@ -388,6 +396,47 @@ private fun GrandmasterRankCard(userProgress: UserProgressState) {
                     color = GoldPrimary,
                     trackColor = Color(0xFF261810)
                 )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Button(
+                        onClick = onOpenIndividualScores,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = GoldPrimary,
+                            contentColor = Color(0xFF1B1008)
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.weight(1.2f)
+                    ) {
+                        Text(
+                            text = "Puntuaciones Individuales (${userProgress.individualGameScores.size})",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    Button(
+                        onClick = onOpenProfile,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF3E281B),
+                            contentColor = GoldLight
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.weight(0.8f)
+                    ) {
+                        Text(
+                            text = if (userProgress.isRegistered) "Cuenta" else "Registrarse",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
         }
     }

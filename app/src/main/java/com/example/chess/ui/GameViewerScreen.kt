@@ -54,8 +54,8 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VolumeOff
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -170,7 +170,7 @@ fun GameViewerScreen(
                         onClick = { viewModel.toggleMute() }
                     ) {
                         Icon(
-                            imageVector = if (uiState.isMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
+                            imageVector = if (uiState.isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
                             contentDescription = if (uiState.isMuted) "Activar sonido" else "Silenciar sonido",
                             tint = if (uiState.isMuted) MaterialTheme.colorScheme.outline else GoldPrimary
                         )
@@ -641,6 +641,7 @@ fun GameViewerScreen(
 
     // Congratulatory Dialog upon completing a game study
     if (uiState.showGameCompletedDialog) {
+        val savedGameScore = uiState.userProgress.individualGameScores[game.id]?.totalScore ?: 100
         AlertDialog(
             onDismissRequest = { viewModel.dismissGameCompletedDialog() },
             icon = {
@@ -653,9 +654,9 @@ fun GameViewerScreen(
             },
             title = {
                 Text(
-                    text = "¡Partida Histórica Dominada! 🏆",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Bold,
+                    text = "¡Partida Superada y Siguiente Desbloqueada! 🏆",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.ExtraBold,
                         color = GoldLight
                     ),
                     textAlign = TextAlign.Center
@@ -678,7 +679,7 @@ fun GameViewerScreen(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "Has estudiado y reproducido de principio a fin la joya entre ${game.whitePlayer} y ${game.blackPlayer} (${game.year}).",
+                        text = "Has completado el estudio de ${game.whitePlayer} vs ${game.blackPlayer} (${game.year}). Tu personaje avanza a la siguiente casilla del Mapa de Viaje.",
                         style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.Center,
                         color = Color.White
@@ -690,9 +691,9 @@ fun GameViewerScreen(
                         border = BorderStroke(1.dp, GoldPrimary)
                     ) {
                         Text(
-                            text = "+50 XP de Maestría Sumados a tu Museo",
+                            text = "Puntuación Individual Guardada: $savedGameScore pts",
                             style = MaterialTheme.typography.labelMedium.copy(
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.ExtraBold,
                                 color = GoldLight
                             ),
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
@@ -702,10 +703,20 @@ fun GameViewerScreen(
             },
             confirmButton = {
                 Button(
-                    onClick = { viewModel.dismissGameCompletedDialog() },
+                    onClick = { viewModel.openNextUnlockedGameFromDialog() },
                     colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary)
                 ) {
-                    Text("Continuar", color = Color.Black, fontWeight = FontWeight.Bold)
+                    Text("Siguiente Partida", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = {
+                        viewModel.dismissGameCompletedDialog()
+                        viewModel.navigateTo(Screen.GAME_LIST)
+                    }
+                ) {
+                    Text("Volver al Viaje", color = GoldLight)
                 }
             },
             containerColor = Color(0xFF1E130D),
@@ -1063,7 +1074,7 @@ fun CriticalChallengePanel(
                             if (status == ChallengeStatus.SOLVED) {
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "+${earnedXp ?: 100} XP sumados a tu progreso de maestría",
+                                    text = "+${earnedXp ?: 300} pts guardados en tu usuario • ¡Siguiente partida desbloqueada!",
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         color = EmeraldWin,
                                         fontWeight = FontWeight.Bold

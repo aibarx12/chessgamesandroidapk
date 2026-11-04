@@ -137,4 +137,90 @@ class ExampleRobolectricTest {
     assertEquals(com.example.chess.model.BoardTheme.CLASSIC_WALNUT, viewModel.uiState.value.selectedBoardTheme)
     assertEquals(com.example.chess.model.PieceStyle.CLASSIC_STAUNTON, viewModel.uiState.value.selectedPieceStyle)
   }
+
+  @Test
+  fun `journey 1 by 1 unlocking and user registration individual scores work correctly`() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    com.example.chess.gamification.GamificationRepository.resetAllDataForTesting(context)
+
+    val allGames = BookDatabase.getAllGames()
+    val game1 = allGames[0]
+    val game2 = allGames[1]
+    val game3 = allGames[2]
+
+    // 1. Starts at HOME with only Game #1 unlocked
+    val initialState = com.example.chess.gamification.GamificationRepository.progressState.value
+    assertTrue(initialState.characterAtHome)
+    assertEquals(0, initialState.unlockedUpToIndex)
+    assertTrue(com.example.chess.gamification.GamificationRepository.isGameUnlocked(game1.id))
+    assertFalse(com.example.chess.gamification.GamificationRepository.isGameUnlocked(game2.id))
+
+    // 2. Solve Game #1's critical moment -> saves individual score & unlocks Game #2 (1 by 1)
+    val earned1 = com.example.chess.gamification.GamificationRepository.recordChallengeResult(
+      momentId = game1.criticalMoments.first().id,
+      gameTitle = game1.title,
+      wrongAttempts = 0,
+      hintUsed = false,
+      revealed = false
+    )
+    assertEquals(300, earned1)
+    val afterGame1 = com.example.chess.gamification.GamificationRepository.progressState.value
+    assertFalse(afterGame1.characterAtHome)
+    assertEquals(1, afterGame1.unlockedUpToIndex)
+    assertTrue(com.example.chess.gamification.GamificationRepository.isGameUnlocked(game2.id))
+    assertFalse(com.example.chess.gamification.GamificationRepository.isGameUnlocked(game3.id))
+    assertEquals(300, afterGame1.individualGameScores[game1.id]?.totalScore)
+
+    // 3. Register User 1 migrating guest scores
+    val reg1 = com.example.chess.gamification.GamificationRepository.registerUser(
+      username = "JugadorUno",
+      emailOrTag = "uno@club.es",
+      pin = "1234",
+      avatar = com.example.chess.gamification.PlayerAvatar.PAUL_MORPHY,
+      migrateGuestProgress = true
+    )
+    assertTrue(reg1 is com.example.chess.gamification.AuthResult.Success)
+    val user1Id = (reg1 as com.example.chess.gamification.AuthResult.Success).user.id
+
+    // Complete Game #2 full study -> adds +100 individual study pts & unlocks Game #3
+    com.example.chess.gamification.GamificationRepository.recordGamePlyProgress(
+      gameId = game2.id,
+      gameTitle = game2.title,
+      currentPly = game2.moves.size,
+      totalPlies = game2.moves.size
+    )
+    val afterGame2 = com.example.chess.gamification.GamificationRepository.progressState.value
+    assertEquals(2, afterGame2.unlockedUpToIndex)
+    assertTrue(com.example.chess.gamification.GamificationRepository.isGameUnlocked(game3.id))
+    assertEquals(100, afterGame2.individualGameScores[game2.id]?.totalScore)
+    val user1SavedXp = afterGame2.totalXp
+
+    // 4. Register User 2 starting fresh at HOME
+    val reg2 = com.example.chess.gamification.GamificationRepository.registerUser(
+      username = "JugadorDos",
+      pin = "",
+      avatar = com.example.chess.gamification.PlayerAvatar.CAPABLANCA,
+      migrateGuestProgress = false
+    )
+    assertTrue(reg2 is com.example.chess.gamification.AuthResult.Success)
+    val user2State = com.example.chess.gamification.GamificationRepository.progressState.value
+    assertEquals("JugadorDos", user2State.displayUsername)
+    assertTrue(user2State.characterAtHome)
+    assertEquals(0, user2State.unlockedUpToIndex)
+    assertEquals(0, user2State.totalXp)
+    assertTrue(user2State.individualGameScores.isEmpty())
+
+    // 5. Switch back to User 1 with PIN -> restores all individual scores and unlocked games
+    val wrongLogin = com.example.chess.gamification.GamificationRepository.loginUser(user1Id, "9999")
+    assertTrue(wrongLogin is com.example.chess.gamification.AuthResult.Error)
+
+    val okLogin = com.example.chess.gamification.GamificationRepository.loginUser(user1Id, "1234")
+    assertTrue(okLogin is com.example.chess.gamification.AuthResult.Success)
+    val restoredUser1 = com.example.chess.gamification.GamificationRepository.progressState.value
+    assertEquals("JugadorUno", restoredUser1.displayUsername)
+    assertEquals(2, restoredUser1.unlockedUpToIndex)
+    assertEquals(user1SavedXp, restoredUser1.totalXp)
+    assertEquals(300, restoredUser1.individualGameScores[game1.id]?.totalScore)
+    assertEquals(100, restoredUser1.individualGameScores[game2.id]?.totalScore)
+  }
 }
