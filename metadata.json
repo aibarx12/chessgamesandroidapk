@@ -1,0 +1,6 @@
+{
+  "name": "Predecesores",
+  "description": "Visor interactivo de grandes partidas históricas de ajedrez, análisis con motor Stockfish y entrenamiento de momentos críticos sin ayuda del módulo.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

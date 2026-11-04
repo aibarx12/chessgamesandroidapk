@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Knight silhouette in elegant gold -->
+    <!-- Base pedestal -->
+    <path
+        android:fillColor="#F6C344"
+        android:pathData="M33,78 L75,78 C76.5,78 77,79.5 76,81 L74,84 C73.5,84.7 72.5,85 71,85 L37,85 C35.5,85 34.5,84.7 34,84 L32,81 C31,79.5 31.5,78 33,78 Z" />
+    <path
+        android:fillColor="#DDA726"
+        android:pathData="M37,74 L71,74 L73,78 L35,78 Z" />
+
+    <!-- Knight body & mane & head -->
+    <path
+        android:fillColor="#F6C344"
+        android:pathData="M37,74 C38,65 40,58 37,51 C35,46 32,43 35,35 C36.5,31 41,29 46,28 C48,25 52,23 57,23 C62,23 66,26 67,30 C69,33 73,36 74,40 C75.5,45 74,51 72,56 C70,61 69,67 71,74 Z" />
+
+    <!-- Knight chest & muzzle contour -->
+    <path
+        android:fillColor="#FFF0AA"
+        android:pathData="M46,28 C43,30 38,34 37,39 C36,44 38,47 43,48 C49,49 52,43 54,39 C55,36 54,32 50,30 Z" />
+
+    <!-- Knight eye -->
+    <path
+        android:fillColor="#151A24"
+        android:pathData="M46,35 A2.2,2.2 0 1,0 46,39.4 A2.2,2.2 0 1,0 46,35 Z" />
+
+    <!-- Mane ridges -->
+    <path
+        android:fillColor="#DDA726"
+        android:pathData="M61,26 C64,28 66,32 66,36 L69,33 C68,29 65,27 61,26 Z M66,39 C69,43 69,48 68,53 L72,48 C72,44 70,40 66,39 Z" />
+
+    <!-- Crown star / genius emblem -->
+    <path
+        android:fillColor="#FFF6D1"
+        android:pathData="M54,16 L56,20 L60,20 L57,22 L58,26 L54,23.5 L50,26 L51,22 L48,20 L52,20 Z" />
+</vector>
